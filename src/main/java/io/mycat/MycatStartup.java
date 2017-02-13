@@ -41,9 +41,6 @@ public final class MycatStartup {
     private static final String dateFormat = "yyyy-MM-dd HH:mm:ss";
     private static final Logger LOGGER = LoggerFactory.getLogger(MycatStartup.class);
     public static void main(String[] args) {
-        //use zk ?
-    	// delete by qianbw
-        // ZkConfig.getInstance().initZk();
         try {
             String home = SystemConfig.getHomePath();
             if (home == null) {

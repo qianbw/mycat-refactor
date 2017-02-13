@@ -196,12 +196,6 @@ public class MycatServer {
 		
 		//记录启动时间
 		this.startupTime = TimeUtil.currentTimeMillis();
-// delete by qianbw
-//		 if(isUseZkSwitch()) {
-//			 String path=     ZKUtils.getZKBasePath()+"lock/dnindex.lock";
-//			 dnindexLock = new InterProcessMutex(ZKUtils.getConnection(), path);
-//		 }
-
 	}
 
 	public AtomicBoolean getStartup() {
@@ -289,10 +283,7 @@ public class MycatServer {
 	}
 
 	public void beforeStart() {
-		String home = SystemConfig.getHomePath();
-
-
-		//ZkConfig.instance().initZk();
+		
 	}
 
 	public void startup() throws IOException {
@@ -480,73 +471,19 @@ public class MycatServer {
 		scheduler.scheduleAtFixedRate(resultSetMapClear(),0L,  system.getClearBigSqLResultSetMapMs(),TimeUnit.MILLISECONDS);
 		
 		RouteStrategyFactory.init();
-//        new Thread(tableStructureCheck()).start();
 
 		//XA Init recovery Log
 		LOGGER.info("===============================================");
 		LOGGER.info("Perform XA recovery log ...");
 		performXARecoveryLog();
 
-		// delete by qianbw
-//		if(isUseZkSwitch()) {
-//			//首次启动如果发现zk上dnindex为空，则将本地初始化上zk
-//			initZkDnindex();
-//		}
-//		initRuleData();
-
 		startup.set(true);
 	}
 
 	public void initRuleData() {
-		if(!isUseZk())  return;
-		InterProcessMutex	ruleDataLock =null;
-		try {
-			File file = new File(SystemConfig.getHomePath(), "conf" + File.separator + "ruledata");
-			String path=     ZKUtils.getZKBasePath()+"lock/ruledata.lock";
-			ruleDataLock=	 new InterProcessMutex(ZKUtils.getConnection(), path);
-			ruleDataLock.acquire(30, TimeUnit.SECONDS);
-		      File[]  childFiles=	file.listFiles();
-			String basePath=ZKUtils.getZKBasePath()+"ruledata/";
-			for (File childFile : childFiles) {
-				CuratorFramework zk = ZKUtils.getConnection();
-				if (zk.checkExists().forPath(basePath+childFile.getName()) == null) {
-					zk.create().creatingParentsIfNeeded().forPath(basePath+childFile.getName(), Files.toByteArray(childFile));
-				}
-			}
-
-
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		} finally {
-			try {
-				if(ruleDataLock!=null)
-				ruleDataLock.release();
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
+		// 不使用zk，所这里点代码删除了
 	}
 
-	private void initZkDnindex() {
-		try {
-            File file = new File(SystemConfig.getHomePath(), "conf" + File.separator + "dnindex.properties");
-            dnindexLock.acquire(30, TimeUnit.SECONDS);
-            String path = ZKUtils.getZKBasePath() + "bindata/dnindex.properties";
-            CuratorFramework zk = ZKUtils.getConnection();
-            if (zk.checkExists().forPath(path) == null) {
-                zk.create().creatingParentsIfNeeded().forPath(path, Files.toByteArray(file));
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                dnindexLock.release();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-	}
 
 	public void reloadDnIndex()
 	{
