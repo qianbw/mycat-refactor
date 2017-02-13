@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mycat:server SYSTEM "server.dtd">
+<mycat:server xmlns:mycat="http://io.mycat/">
+    <system>
+        <property name="defaultSqlParser">druidparser</property>
+        <!--  <property name="useCompression">1</property>--> <!--1为开启mysql压缩协议-->
+        <!-- <property name="processorBufferChunk">40960</property> -->
+        <!--
+        <property name="processors">1</property>
+        <property name="processorExecutor">32</property>
+         -->
+        <!--默认是65535 64K 用于sql解析时最大文本长度 -->
+        <!--<property name="maxStringLiteralLength">65535</property>-->
+        <!--<property name="sequnceHandlerType">0</property>-->
+        <!-- 表示使用数据库方式生成sequence. -->
+        <property name="sequnceHandlerType">1</property>
+        <!--<property name="backSocketNoDelay">1</property>-->
+        <!--<property name="frontSocketNoDelay">1</property>-->
+        <!--<property name="processorExecutor">16</property>-->
+        <!--
+            <property name="mutiNodeLimitType">1</property> 0：开启小数量级（默认） ；1：开启亿级数据排序
+            <property name="mutiNodePatchSize">100</property> 亿级数量排序批量
+            <property name="processors">32</property> <property name="processorExecutor">32</property>
+            <property name="serverPort">8066</property> <property name="managerPort">9066</property>
+            <property name="idleTimeout">300000</property> <property name="bindIp">0.0.0.0</property>
+            <property name="frontWriteQueueSize">4096</property> <property name="processors">32</property> -->
+        <property name="serverPort">8066</property> 
+        <property name="managerPort">9066</property>
+
+        <!--分布式事务开关，0为不过滤分布式事务，1为过滤分布式事务（如果分布式事务内只涉及全局表，则不过滤），2为不过滤分布式事务,但是记录分布式事务日志-->
+        <property name="handleDistributedTransactions">0</property>
+    </system>
+    <user name="root">
+        <!--从1.4.1开始，MyCat支持密文保存密码,这里明文密码为root -->
+        <!-- <property name="usingDecrypt">1</property> -->
+        <!-- <property name="password">CrjpLhvVJkHk0EPW35Y07dUeTimf52zMqClYQkIAN3/dqiG1DVUe9Zr4JLh8Kl+1KH1zd7YTKu5w04QgdyQeDw==</property> -->
+        <property name="password">admin</property>
+        <property name="schemas">schema1</property>
+    </user>
+    <user name="test">
+        <!--这里明文密码为test-->
+        <property name="usingDecrypt">1</property>
+        <property name="password">nYx8wxkKtgdPtMXIpapwbNadIWFzpse48NcO+42D1yS//1cNxxQquw07eV/7gvVpxzbjNv47t6QpChvVszKy9g==</property>
+        <property name="readOnly">true</property>
+        <property name="schemas">schema1</property>
+    </user>
+</mycat:server>
+
