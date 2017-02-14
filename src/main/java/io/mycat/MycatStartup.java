@@ -23,7 +23,7 @@
  */
 package io.mycat;
 
-
+import io.mycat.config.model.SystemConfig;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -31,34 +31,34 @@ import java.util.Date;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.config.loader.zkprocess.comm.ZkConfig;
-import io.mycat.config.model.SystemConfig;
-
 /**
  * @author mycat
  */
 public final class MycatStartup {
-    private static final String dateFormat = "yyyy-MM-dd HH:mm:ss";
-    private static final Logger LOGGER = LoggerFactory.getLogger(MycatStartup.class);
-    public static void main(String[] args) {
-        try {
-            String home = SystemConfig.getHomePath();
-            if (home == null) {
-                System.out.println(SystemConfig.SYS_HOME + "  is not set.");
-                System.exit(-1);
-            }
-            // init
-            MycatServer server = MycatServer.getInstance();
-            server.beforeStart();
+	private static final String dateFormat = "yyyy-MM-dd HH:mm:ss";
+	private static final Logger LOGGER = LoggerFactory
+			.getLogger(MycatStartup.class);
 
-            // startup
-            server.startup();
-            System.out.println("MyCAT Server startup successfully. see logs in logs/mycat.log");
+	public static void main(String[] args) {
+		try {
+			String home = SystemConfig.getHomePath();
+			if (home == null) {
+				System.out.println(SystemConfig.SYS_HOME + "  is not set.");
+				System.exit(-1);
+			}
+			// init
+			MycatServer server = MycatServer.getInstance();
+			server.beforeStart();
 
-        } catch (Exception e) {
-            SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
-            LOGGER.error(sdf.format(new Date()) + " startup error", e);
-            System.exit(-1);
-        }
-    }
+			// startup
+			server.startup();
+			System.out
+					.println("MyCAT Server startup successfully. see logs in logs/mycat.log");
+
+		} catch (Exception e) {
+			SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+			LOGGER.error(sdf.format(new Date()) + " startup error", e);
+			System.exit(-1);
+		}
+	}
 }

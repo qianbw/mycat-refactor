@@ -23,15 +23,6 @@
  */
 package io.mycat.config;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import io.mycat.config.loader.zkprocess.comm.ZkConfig;
-import io.mycat.config.loader.zkprocess.comm.ZkParamCfg;
-import org.apache.log4j.Logger;
-
 import io.mycat.backend.datasource.PhysicalDBNode;
 import io.mycat.backend.datasource.PhysicalDBPool;
 import io.mycat.backend.datasource.PhysicalDatasource;
@@ -50,18 +41,24 @@ import io.mycat.config.model.SchemaConfig;
 import io.mycat.config.model.SystemConfig;
 import io.mycat.config.model.UserConfig;
 import io.mycat.config.util.ConfigException;
-import io.mycat.route.sequence.handler.DistributedSequenceHandler;
 import io.mycat.route.sequence.handler.IncrSequenceMySQLHandler;
 import io.mycat.route.sequence.handler.IncrSequenceTimeHandler;
-import io.mycat.route.sequence.handler.IncrSequenceZKHandler;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.log4j.Logger;
 
 /**
  * @author mycat
  */
 public class ConfigInitializer {
-	
-	private static final Logger LOGGER = Logger.getLogger( ConfigInitializer.class );
-	
+
+	private static final Logger LOGGER = Logger
+			.getLogger(ConfigInitializer.class);
+
 	private volatile SystemConfig system;
 	private volatile MycatCluster cluster;
 	private volatile FirewallConfig firewall;
@@ -71,151 +68,161 @@ public class ConfigInitializer {
 	private volatile Map<String, PhysicalDBPool> dataHosts;
 
 	public ConfigInitializer(boolean loadDataHost) {
-		
-		//读取rule.xml和schema.xml
+
+		// 读取rule.xml和schema.xml
 		SchemaLoader schemaLoader = new XMLSchemaLoader();
-		
-		//读取server.xml
+
+		// 读取server.xml
 		XMLConfigLoader configLoader = new XMLConfigLoader(schemaLoader);
-		
+
 		schemaLoader = null;
-		
-		//加载配置
+
+		// 加载配置
 		this.system = configLoader.getSystemConfig();
 		this.users = configLoader.getUserConfigs();
 		this.schemas = configLoader.getSchemaConfigs();
-		
-		//是否重新加载DataHost和对应的DataNode
+
+		// 是否重新加载DataHost和对应的DataNode
 		if (loadDataHost) {
 			this.dataHosts = initDataHosts(configLoader);
 			this.dataNodes = initDataNodes(configLoader);
 		}
-		
-		//权限管理
+
+		// 权限管理
 		this.firewall = configLoader.getFirewallConfig();
 		this.cluster = initCobarCluster(configLoader);
-		
-		//不同类型的全局序列处理器的配置加载
+
+		// 不同类型的全局序列处理器的配置加载
 		if (system.getSequnceHandlerType() == SystemConfig.SEQUENCEHANDLER_MYSQLDB) {
 			IncrSequenceMySQLHandler.getInstance().load();
 		}
-		
+
 		if (system.getSequnceHandlerType() == SystemConfig.SEQUENCEHANDLER_LOCAL_TIME) {
 			IncrSequenceTimeHandler.getInstance().load();
 		}
-		
-		if (system.getSequnceHandlerType() == SystemConfig.SEQUENCEHANDLER_ZK_DISTRIBUTED) {
-			DistributedSequenceHandler.getInstance(system).load();
-		}
-		
-		if (system.getSequnceHandlerType() == SystemConfig.SEQUENCEHANDLER_ZK_GLOBAL_INCREMENT) {
-			IncrSequenceZKHandler.getInstance().load();
-		}
-		
+
+		// if (system.getSequnceHandlerType() ==
+		// SystemConfig.SEQUENCEHANDLER_ZK_DISTRIBUTED) {
+		// DistributedSequenceHandler.getInstance(system).load();
+		// }
+		//
+		// if (system.getSequnceHandlerType() ==
+		// SystemConfig.SEQUENCEHANDLER_ZK_GLOBAL_INCREMENT) {
+		// IncrSequenceZKHandler.getInstance().load();
+		// }
+
 		/**
 		 * 配置文件初始化， 自检
 		 */
 		this.selfChecking0();
 	}
-	
+
 	private void selfChecking0() throws ConfigException {
-		
+
 		// 检查user与schema配置对应以及schema配置不为空
 		if (users == null || users.isEmpty()) {
 			throw new ConfigException("SelfCheck### user all node is empty!");
-			
+
 		} else {
-			
+
 			for (UserConfig uc : users.values()) {
 				if (uc == null) {
-					throw new ConfigException("SelfCheck### users node within the item is empty!");
+					throw new ConfigException(
+							"SelfCheck### users node within the item is empty!");
 				}
-				
+
 				Set<String> authSchemas = uc.getSchemas();
 				if (authSchemas == null) {
-					throw new ConfigException("SelfCheck### user " + uc.getName() + "refered schemas is empty!");
+					throw new ConfigException("SelfCheck### user "
+							+ uc.getName() + "refered schemas is empty!");
 				}
-				
+
 				for (String schema : authSchemas) {
-					if ( !schemas.containsKey(schema) ) {
-						String errMsg = "SelfCheck###  schema " + schema + " refered by user " + uc.getName() + " is not exist!";
+					if (!schemas.containsKey(schema)) {
+						String errMsg = "SelfCheck###  schema " + schema
+								+ " refered by user " + uc.getName()
+								+ " is not exist!";
 						throw new ConfigException(errMsg);
 					}
 				}
 			}
-		}	
-		
-		
-		// schema 配置检测		
+		}
+
+		// schema 配置检测
 		for (SchemaConfig sc : schemas.values()) {
 			if (null == sc) {
-				throw new ConfigException("SelfCheck### schema all node is empty!");
-				
-			} else {				
+				throw new ConfigException(
+						"SelfCheck### schema all node is empty!");
+
+			} else {
 				// check dataNode / dataHost 节点
-				if ( this.dataNodes != null &&  this.dataHosts != null  ) {					
+				if (this.dataNodes != null && this.dataHosts != null) {
 					Set<String> dataNodeNames = sc.getAllDataNodes();
-					for(String dataNodeName: dataNodeNames) {
-						
+					for (String dataNodeName : dataNodeNames) {
+
 						PhysicalDBNode node = this.dataNodes.get(dataNodeName);
-						if ( node == null ) {
-							throw new ConfigException("SelfCheck### schema dbnode is empty!");
+						if (node == null) {
+							throw new ConfigException(
+									"SelfCheck### schema dbnode is empty!");
 						}
 					}
 				}
 			}
-		}	
-		
+		}
+
 	}
-	
+
 	public void testConnection() {
-		
-		// 实际链路的连接测试		
-		if ( this.dataNodes != null &&  this.dataHosts != null  ) {
-			
+
+		// 实际链路的连接测试
+		if (this.dataNodes != null && this.dataHosts != null) {
+
 			Map<String, Boolean> map = new HashMap<String, Boolean>();
-			
-			for(PhysicalDBNode dataNode: dataNodes.values() ) {
-				
-				String database = dataNode.getDatabase();		
+
+			for (PhysicalDBNode dataNode : dataNodes.values()) {
+
+				String database = dataNode.getDatabase();
 				PhysicalDBPool pool = dataNode.getDbPool();
-				
-				for (PhysicalDatasource ds : pool.getAllDataSources()) {							
+
+				for (PhysicalDatasource ds : pool.getAllDataSources()) {
 					String key = ds.getName() + "_" + database;
-					if ( map.get( key ) == null ) {										
-						map.put( key, false );
-						
+					if (map.get(key) == null) {
+						map.put(key, false);
+
 						boolean isConnected = false;
 						try {
-							isConnected = ds.testConnection( database );		
-							map.put( key, isConnected );
+							isConnected = ds.testConnection(database);
+							map.put(key, isConnected);
 						} catch (IOException e) {
 							LOGGER.warn("test conn error:", e);
-						}										
-					}								
+						}
+					}
 				}
 			}
-			
+
 			//
 			boolean isConnectivity = true;
 			for (Map.Entry<String, Boolean> entry : map.entrySet()) {
 				String key = entry.getKey();
 				Boolean value = entry.getValue();
-				if ( !value && isConnectivity ) {
-					LOGGER.warn("SelfCheck### test " + key + " database connection failed ");							
+				if (!value && isConnectivity) {
+					LOGGER.warn("SelfCheck### test " + key
+							+ " database connection failed ");
 					isConnectivity = false;
-					
+
 				} else {
-					LOGGER.info("SelfCheck### test " + key + " database connection success ");
+					LOGGER.info("SelfCheck### test " + key
+							+ " database connection success ");
 				}
 			}
-			
-			if ( !isConnectivity ) {
-				throw new ConfigException("SelfCheck### there are some datasource connection failed, pls check!");
+
+			if (!isConnectivity) {
+				throw new ConfigException(
+						"SelfCheck### there are some datasource connection failed, pls check!");
 			}
-				
+
 		}
-		
+
 	}
 
 	public SystemConfig getSystem() {
@@ -252,15 +259,17 @@ public class ConfigInitializer {
 
 	private Map<String, PhysicalDBPool> initDataHosts(ConfigLoader configLoader) {
 		Map<String, DataHostConfig> nodeConfs = configLoader.getDataHosts();
-		boolean isBooster="booster".equalsIgnoreCase(ZkConfig.getInstance().getValue(ZkParamCfg.MYCAT_SERVER_TYPE) ) ;
-		//根据DataHost建立PhysicalDBPool，其实就是实际数据库连接池，每个DataHost对应一个PhysicalDBPool
+		// boolean
+		// isBooster="booster".equalsIgnoreCase(ZkConfig.getInstance().getValue(ZkParamCfg.MYCAT_SERVER_TYPE)
+		// ) ;
+		// 根据DataHost建立PhysicalDBPool，其实就是实际数据库连接池，每个DataHost对应一个PhysicalDBPool
 		Map<String, PhysicalDBPool> nodes = new HashMap<String, PhysicalDBPool>(
 				nodeConfs.size());
 		for (DataHostConfig conf : nodeConfs.values()) {
-			if(isBooster){
-				conf.setMinCon(2);
-			}
-			//建立PhysicalDBPool
+			// if(isBooster){
+			conf.setMinCon(2);
+			// }
+			// 建立PhysicalDBPool
 			PhysicalDBPool pool = getPhysicalDBPool(conf, configLoader);
 			nodes.put(pool.getHostName(), pool);
 		}
@@ -273,7 +282,7 @@ public class ConfigInitializer {
 		PhysicalDatasource[] dataSources = new PhysicalDatasource[nodes.length];
 		if (dbType.equals("mysql") && dbDriver.equals("native")) {
 			for (int i = 0; i < nodes.length; i++) {
-				//设置最大idle时间，默认为30分钟
+				// 设置最大idle时间，默认为30分钟
 				nodes[i].setIdleTimeout(system.getIdleTimeout());
 				MySQLDataSource ds = new MySQLDataSource(nodes[i], conf, isRead);
 				dataSources[i] = ds;
@@ -285,13 +294,15 @@ public class ConfigInitializer {
 				JDBCDatasource ds = new JDBCDatasource(nodes[i], conf, isRead);
 				dataSources[i] = ds;
 			}
-		} else if ("postgresql".equalsIgnoreCase(dbType) && dbDriver.equalsIgnoreCase("native")){
+		} else if ("postgresql".equalsIgnoreCase(dbType)
+				&& dbDriver.equalsIgnoreCase("native")) {
 			for (int i = 0; i < nodes.length; i++) {
 				nodes[i].setIdleTimeout(system.getIdleTimeout());
-				PostgreSQLDataSource ds = new PostgreSQLDataSource(nodes[i], conf, isRead);
+				PostgreSQLDataSource ds = new PostgreSQLDataSource(nodes[i],
+						conf, isRead);
 				dataSources[i] = ds;
 			}
-		} else{
+		} else {
 			throw new ConfigException("not supported yet !" + hostName);
 		}
 		return dataSources;
@@ -300,17 +311,17 @@ public class ConfigInitializer {
 	private PhysicalDBPool getPhysicalDBPool(DataHostConfig conf,
 			ConfigLoader configLoader) {
 		String name = conf.getName();
-		//数据库类型，我们这里只讨论MySQL
+		// 数据库类型，我们这里只讨论MySQL
 		String dbType = conf.getDbType();
-		//连接数据库驱动，我们这里只讨论MyCat自己实现的native
+		// 连接数据库驱动，我们这里只讨论MyCat自己实现的native
 		String dbDriver = conf.getDbDriver();
-		//针对所有写节点创建PhysicalDatasource
+		// 针对所有写节点创建PhysicalDatasource
 		PhysicalDatasource[] writeSources = createDataSource(conf, name,
 				dbType, dbDriver, conf.getWriteHosts(), false);
 		Map<Integer, DBHostConfig[]> readHostsMap = conf.getReadHosts();
 		Map<Integer, PhysicalDatasource[]> readSourcesMap = new HashMap<Integer, PhysicalDatasource[]>(
 				readHostsMap.size());
-		//对于每个读节点建立key为writeHost下标value为readHost的PhysicalDatasource[]的哈希表
+		// 对于每个读节点建立key为writeHost下标value为readHost的PhysicalDatasource[]的哈希表
 		for (Map.Entry<Integer, DBHostConfig[]> entry : readHostsMap.entrySet()) {
 			PhysicalDatasource[] readSources = createDataSource(conf, name,
 					dbType, dbDriver, entry.getValue(), true);

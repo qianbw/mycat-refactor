@@ -66,7 +66,6 @@ import io.mycat.statistic.stat.UserStatAnalyzer;
 import io.mycat.util.ExecutorUtil;
 import io.mycat.util.NameableExecutor;
 import io.mycat.util.TimeUtil;
-import io.mycat.util.ZKUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -86,7 +85,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -997,12 +995,12 @@ public class MycatServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String path = ZKUtils.getZKBasePath() + "bindata";
-		CuratorFramework zk = ZKUtils.getConnection();
-		if (zk.checkExists().forPath(path) == null)
-			;
-
-		byte[] data = zk.getData().forPath(path);
-		System.out.println(data.length);
+		// String path = ZKUtils.getZKBasePath() + "bindata";
+		// CuratorFramework zk = ZKUtils.getConnection();
+		// if (zk.checkExists().forPath(path) == null)
+		// ;
+		//
+		// byte[] data = zk.getData().forPath(path);
+		// System.out.println(data.length);
 	}
 }
