@@ -26,7 +26,6 @@ package io.mycat.config;
 import io.mycat.backend.datasource.PhysicalDBNode;
 import io.mycat.backend.datasource.PhysicalDBPool;
 import io.mycat.backend.datasource.PhysicalDatasource;
-import io.mycat.backend.jdbc.JDBCDatasource;
 import io.mycat.backend.mysql.nio.MySQLDataSource;
 import io.mycat.config.loader.ConfigLoader;
 import io.mycat.config.loader.SchemaLoader;
@@ -284,12 +283,6 @@ public class ConfigInitializer {
 				// 设置最大idle时间，默认为30分钟
 				nodes[i].setIdleTimeout(system.getIdleTimeout());
 				MySQLDataSource ds = new MySQLDataSource(nodes[i], conf, isRead);
-				dataSources[i] = ds;
-			}
-		} else if (dbDriver.equals("jdbc")) {
-			for (int i = 0; i < nodes.length; i++) {
-				nodes[i].setIdleTimeout(system.getIdleTimeout());
-				JDBCDatasource ds = new JDBCDatasource(nodes[i], conf, isRead);
 				dataSources[i] = ds;
 			}
 		} else {
