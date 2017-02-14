@@ -23,29 +23,30 @@
  */
 package io.mycat.net;
 
+import io.mycat.backend.mysql.CharsetUtil;
+import io.mycat.util.CompressUtil;
+import io.mycat.util.TimeUtil;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousChannel;
 import java.nio.channels.NetworkChannel;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.base.Strings;
-
-import io.mycat.backend.mysql.CharsetUtil;
-import io.mycat.util.CompressUtil;
-import io.mycat.util.TimeUtil;
-
-import org.slf4j.Logger; import org.slf4j.LoggerFactory;
 
 /**
  * @author mycat
  */
 public abstract class AbstractConnection implements NIOConnection {
-	
-	protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractConnection.class);
-	
+
+	protected static final Logger LOGGER = LoggerFactory
+			.getLogger(AbstractConnection.class);
+
 	protected String host;
 	protected int localPort;
 	protected int port;
@@ -61,9 +62,9 @@ public abstract class AbstractConnection implements NIOConnection {
 	protected int maxPacketSize;
 	protected volatile ByteBuffer readBuffer;
 	protected volatile ByteBuffer writeBuffer;
-	
+
 	protected final ConcurrentLinkedQueue<ByteBuffer> writeQueue = new ConcurrentLinkedQueue<ByteBuffer>();
-	
+
 	protected volatile int readBufferOffset;
 	protected long lastLargeMessageTime;
 	protected final AtomicBoolean isClosed;
@@ -74,10 +75,10 @@ public abstract class AbstractConnection implements NIOConnection {
 	protected long netInBytes;
 	protected long netOutBytes;
 	protected int writeAttempts;
-	
+
 	protected volatile boolean isSupportCompress = false;
-    protected final ConcurrentLinkedQueue<byte[]> decompressUnfinishedDataQueue = new ConcurrentLinkedQueue<byte[]>();
-    protected final ConcurrentLinkedQueue<byte[]> compressUnfinishedDataQueue = new ConcurrentLinkedQueue<byte[]>();
+	protected final ConcurrentLinkedQueue<byte[]> decompressUnfinishedDataQueue = new ConcurrentLinkedQueue<byte[]>();
+	protected final ConcurrentLinkedQueue<byte[]> compressUnfinishedDataQueue = new ConcurrentLinkedQueue<byte[]>();
 
 	private long idleTimeout;
 
@@ -85,12 +86,12 @@ public abstract class AbstractConnection implements NIOConnection {
 
 	public AbstractConnection(NetworkChannel channel) {
 		this.channel = channel;
-		boolean isAIO = (channel instanceof AsynchronousChannel);
-		if (isAIO) {
-			socketWR = new AIOSocketWR(this);
-		} else {
-			socketWR = new NIOSocketWR(this);
-		}
+		// boolean isAIO = (channel instanceof AsynchronousChannel);
+		// if (isAIO) {
+		// socketWR = new AIOSocketWR(this);
+		// } else {
+		socketWR = new NIOSocketWR(this);
+		// }
 		this.isClosed = new AtomicBoolean(false);
 		this.startupTime = TimeUtil.currentTimeMillis();
 		this.lastReadTime = startupTime;
@@ -110,7 +111,8 @@ public abstract class AbstractConnection implements NIOConnection {
 
 		int ci = CharsetUtil.getIndex(charset);
 		if (ci > 0) {
-			this.charset = charset.equalsIgnoreCase("utf8mb4") ? "utf8" : charset;
+			this.charset = charset.equalsIgnoreCase("utf8mb4") ? "utf8"
+					: charset;
 			this.charsetIndex = ci;
 			return true;
 		} else {
@@ -175,7 +177,8 @@ public abstract class AbstractConnection implements NIOConnection {
 	}
 
 	public boolean isIdleTimeout() {
-		return TimeUtil.currentTimeMillis() > Math.max(lastWriteTime, lastReadTime) + idleTimeout;
+		return TimeUtil.currentTimeMillis() > Math.max(lastWriteTime,
+				lastReadTime) + idleTimeout;
 	}
 
 	public NetworkChannel getChannel() {
@@ -253,7 +256,8 @@ public abstract class AbstractConnection implements NIOConnection {
 	@Override
 	public void handle(byte[] data) {
 		if (isSupportCompress()) {
-			List<byte[]> packs = CompressUtil.decompressMysqlPacket(data, decompressUnfinishedDataQueue);
+			List<byte[]> packs = CompressUtil.decompressMysqlPacket(data,
+					decompressUnfinishedDataQueue);
 			for (byte[] pack : packs) {
 				if (pack.length != 0) {
 					handler.handle(pack);
@@ -281,65 +285,71 @@ public abstract class AbstractConnection implements NIOConnection {
 	 * 读取可能的Socket字节流
 	 */
 	public void onReadData(int got) throws IOException {
-		
+
 		if (isClosed.get()) {
 			return;
 		}
-		
+
 		lastReadTime = TimeUtil.currentTimeMillis();
 		if (got < 0) {
 			this.close("stream closed");
-            return;
-		} else if (got == 0
-				&& !this.channel.isOpen()) {
-				this.close("socket closed");
-				return;
+			return;
+		} else if (got == 0 && !this.channel.isOpen()) {
+			this.close("socket closed");
+			return;
 		}
 		netInBytes += got;
 		processor.addNetInBytes(got);
 
 		// 循环处理字节信息
-		int offset = readBufferOffset, length = 0, position = readBuffer.position();
+		int offset = readBufferOffset, length = 0, position = readBuffer
+				.position();
 		for (;;) {
-			length = getPacketLength(readBuffer, offset);			
+			length = getPacketLength(readBuffer, offset);
 			if (length == -1) {
 				if (offset != 0) {
 					this.readBuffer = compactReadBuffer(readBuffer, offset);
 				} else if (readBuffer != null && !readBuffer.hasRemaining()) {
-					throw new RuntimeException( "invalid readbuffer capacity ,too little buffer size " 
-							+ readBuffer.capacity());
+					throw new RuntimeException(
+							"invalid readbuffer capacity ,too little buffer size "
+									+ readBuffer.capacity());
 				}
 				break;
 			}
 
 			if (position >= offset + length && readBuffer != null) {
-				
+
 				// handle this package
-				readBuffer.position(offset);				
+				readBuffer.position(offset);
 				byte[] data = new byte[length];
 				readBuffer.get(data, 0, length);
 				handle(data);
-				
+
 				// maybe handle stmt_close
-				if(isClosed()) {
-					return ;
+				if (isClosed()) {
+					return;
 				}
 
 				// offset to next position
 				offset += length;
-				
+
 				// reached end
 				if (position == offset) {
 					// if cur buffer is temper none direct byte buffer and not
 					// received large message in recent 30 seconds
 					// then change to direct buffer for performance
 					if (readBuffer != null && !readBuffer.isDirect()
-							&& lastLargeMessageTime < lastReadTime - 30 * 1000L) {  // used temp heap
+							&& lastLargeMessageTime < lastReadTime - 30 * 1000L) { // used
+																					// temp
+																					// heap
 						if (LOGGER.isDebugEnabled()) {
-							LOGGER.debug("change to direct con read buffer ,cur temp buf size :" + readBuffer.capacity());
+							LOGGER.debug("change to direct con read buffer ,cur temp buf size :"
+									+ readBuffer.capacity());
 						}
 						recycle(readBuffer);
-						readBuffer = processor.getBufferPool().allocate(processor.getBufferPool().getConReadBuferChunk());
+						readBuffer = processor.getBufferPool().allocate(
+								processor.getBufferPool()
+										.getConReadBuferChunk());
 					} else {
 						if (readBuffer != null) {
 							readBuffer.clear();
@@ -351,37 +361,38 @@ public abstract class AbstractConnection implements NIOConnection {
 				} else {
 					// try next package parse
 					readBufferOffset = offset;
-					if(readBuffer != null) {
+					if (readBuffer != null) {
 						readBuffer.position(position);
 					}
 					continue;
 				}
-				
-				
-				
-			} else {				
+
+			} else {
 				// not read whole message package ,so check if buffer enough and
 				// compact readbuffer
 				if (!readBuffer.hasRemaining()) {
-					readBuffer = ensureFreeSpaceOfReadBuffer(readBuffer, offset, length);
+					readBuffer = ensureFreeSpaceOfReadBuffer(readBuffer,
+							offset, length);
 				}
 				break;
 			}
 		}
 	}
-	
+
 	private boolean isConReadBuffer(ByteBuffer buffer) {
-		return buffer.capacity() == processor.getBufferPool().getConReadBuferChunk() && buffer.isDirect();
+		return buffer.capacity() == processor.getBufferPool()
+				.getConReadBuferChunk() && buffer.isDirect();
 	}
-	
+
 	private ByteBuffer ensureFreeSpaceOfReadBuffer(ByteBuffer buffer,
 			int offset, final int pkgLength) {
 		// need a large buffer to hold the package
 		if (pkgLength > maxPacketSize) {
 			throw new IllegalArgumentException("Packet size over the limit.");
 		} else if (buffer.capacity() < pkgLength) {
-		
-			ByteBuffer newBuffer = processor.getBufferPool().allocate(pkgLength);
+
+			ByteBuffer newBuffer = processor.getBufferPool()
+					.allocate(pkgLength);
 			lastLargeMessageTime = TimeUtil.currentTimeMillis();
 			buffer.position(offset);
 			newBuffer.put(buffer);
@@ -400,9 +411,9 @@ public abstract class AbstractConnection implements NIOConnection {
 			}
 		}
 	}
-	
+
 	private ByteBuffer compactReadBuffer(ByteBuffer buffer, int offset) {
-		if(buffer == null) {
+		if (buffer == null) {
 			return null;
 		}
 		buffer.limit(buffer.position());
@@ -421,20 +432,21 @@ public abstract class AbstractConnection implements NIOConnection {
 
 	private final void writeNotSend(ByteBuffer buffer) {
 		if (isSupportCompress()) {
-			ByteBuffer newBuffer = CompressUtil.compressMysqlPacket(buffer, this, compressUnfinishedDataQueue);
+			ByteBuffer newBuffer = CompressUtil.compressMysqlPacket(buffer,
+					this, compressUnfinishedDataQueue);
 			writeQueue.offer(newBuffer);
-			
+
 		} else {
 			writeQueue.offer(buffer);
 		}
 	}
 
-
-    @Override
+	@Override
 	public final void write(ByteBuffer buffer) {
-    	
+
 		if (isSupportCompress()) {
-			ByteBuffer newBuffer = CompressUtil.compressMysqlPacket(buffer, this, compressUnfinishedDataQueue);
+			ByteBuffer newBuffer = CompressUtil.compressMysqlPacket(buffer,
+					this, compressUnfinishedDataQueue);
 			writeQueue.offer(newBuffer);
 		} else {
 			writeQueue.offer(buffer);
@@ -451,15 +463,16 @@ public abstract class AbstractConnection implements NIOConnection {
 		}
 	}
 
-	
-	public ByteBuffer checkWriteBuffer(ByteBuffer buffer, int capacity, boolean writeSocketIfFull) {
+	public ByteBuffer checkWriteBuffer(ByteBuffer buffer, int capacity,
+			boolean writeSocketIfFull) {
 		if (capacity > buffer.remaining()) {
 			if (writeSocketIfFull) {
 				writeNotSend(buffer);
 				return processor.getBufferPool().allocate(capacity);
 			} else {// Relocate a larger buffer
 				buffer.flip();
-				ByteBuffer newBuf = processor.getBufferPool().allocate(capacity + buffer.limit() + 1);
+				ByteBuffer newBuf = processor.getBufferPool().allocate(
+						capacity + buffer.limit() + 1);
 				newBuf.put(buffer);
 				this.recycle(buffer);
 				return newBuf;
@@ -527,39 +540,39 @@ public abstract class AbstractConnection implements NIOConnection {
 	 * 清理资源
 	 */
 	protected void cleanup() {
-		
+
 		// 清理资源占用
 		if (readBuffer != null) {
 			this.recycle(readBuffer);
 			this.readBuffer = null;
 			this.readBufferOffset = 0;
 		}
-		
+
 		if (writeBuffer != null) {
 			recycle(writeBuffer);
 			this.writeBuffer = null;
 		}
-		
+
 		if (!decompressUnfinishedDataQueue.isEmpty()) {
 			decompressUnfinishedDataQueue.clear();
 		}
-		
+
 		if (!compressUnfinishedDataQueue.isEmpty()) {
 			compressUnfinishedDataQueue.clear();
 		}
-		
+
 		ByteBuffer buffer = null;
 		while ((buffer = writeQueue.poll()) != null) {
 			recycle(buffer);
 		}
 	}
-	
+
 	protected int getPacketLength(ByteBuffer buffer, int offset) {
 		int headerSize = getPacketHeaderSize();
-		if ( isSupportCompress() ) {
+		if (isSupportCompress()) {
 			headerSize = 7;
 		}
-		
+
 		if (buffer.position() < offset + headerSize) {
 			return -1;
 		} else {
@@ -576,21 +589,22 @@ public abstract class AbstractConnection implements NIOConnection {
 
 	private void closeSocket() {
 		if (channel != null) {
-			
+
 			boolean isSocketClosed = true;
 			try {
 				channel.close();
 			} catch (Exception e) {
 				LOGGER.error("AbstractConnectionCloseError", e);
 			}
-			
+
 			boolean closed = isSocketClosed && (!channel.isOpen());
 			if (closed == false) {
 				LOGGER.warn("close socket of connnection failed " + this);
 			}
 		}
 	}
+
 	public void onConnectfinish() {
 		LOGGER.debug("连接后台真正完成");
-	}	
+	}
 }
