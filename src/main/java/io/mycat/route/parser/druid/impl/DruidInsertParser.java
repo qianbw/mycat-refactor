@@ -112,21 +112,22 @@ public class DruidInsertParser extends DefaultDruidParser {
 	
 	private RouteResultset parserChildTable(SchemaConfig schema, RouteResultset rrs,
 			String tableName, MySqlInsertStatement insertStmt) throws SQLNonTransientException {
-		TableConfig tc = schema.getTables().get(tableName);
+		TableConfig tc = schema.getTables().get(tableName); //子表配置信息
 		
-		String joinKey = tc.getJoinKey();
-		int joinKeyIndex = getJoinKeyIndex(insertStmt.getColumns(), joinKey);
+		String joinKey = tc.getJoinKey(); //获取子表的 Join 字段
+		int joinKeyIndex = getJoinKeyIndex(insertStmt.getColumns(), joinKey);  //获取子表的 Join 字段在插入语句中的 位置
 		if(joinKeyIndex == -1) {
 			String inf = "joinKey not provided :" + tc.getJoinKey()+ "," + insertStmt;
 			LOGGER.warn(inf);
 			throw new SQLNonTransientException(inf);
 		}
-		if(isMultiInsert(insertStmt)) {
+		if(isMultiInsert(insertStmt)) {  //批量插入
 			String msg = "ChildTable multi insert not provided" ;
 			LOGGER.warn(msg);
 			throw new SQLNonTransientException(msg);
 		}
 		
+		//获取 join 字段的值
 		String joinKeyVal = insertStmt.getValues().getValues().get(joinKeyIndex).toString();
 
 		
