@@ -28,7 +28,6 @@ import io.mycat.backend.datasource.PhysicalDBPool;
 import io.mycat.backend.datasource.PhysicalDatasource;
 import io.mycat.backend.jdbc.JDBCDatasource;
 import io.mycat.backend.mysql.nio.MySQLDataSource;
-import io.mycat.backend.postgresql.PostgreSQLDataSource;
 import io.mycat.config.loader.ConfigLoader;
 import io.mycat.config.loader.SchemaLoader;
 import io.mycat.config.loader.xml.XMLConfigLoader;
@@ -287,19 +286,10 @@ public class ConfigInitializer {
 				MySQLDataSource ds = new MySQLDataSource(nodes[i], conf, isRead);
 				dataSources[i] = ds;
 			}
-
 		} else if (dbDriver.equals("jdbc")) {
 			for (int i = 0; i < nodes.length; i++) {
 				nodes[i].setIdleTimeout(system.getIdleTimeout());
 				JDBCDatasource ds = new JDBCDatasource(nodes[i], conf, isRead);
-				dataSources[i] = ds;
-			}
-		} else if ("postgresql".equalsIgnoreCase(dbType)
-				&& dbDriver.equalsIgnoreCase("native")) {
-			for (int i = 0; i < nodes.length; i++) {
-				nodes[i].setIdleTimeout(system.getIdleTimeout());
-				PostgreSQLDataSource ds = new PostgreSQLDataSource(nodes[i],
-						conf, isRead);
 				dataSources[i] = ds;
 			}
 		} else {
