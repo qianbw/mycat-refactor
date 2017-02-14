@@ -43,8 +43,6 @@ import io.mycat.config.model.TableConfig;
 import io.mycat.config.table.structure.MySQLTableStructureDetector;
 import io.mycat.manager.ManagerConnectionFactory;
 import io.mycat.memory.MyCatMemory;
-import io.mycat.net.AIOAcceptor;
-import io.mycat.net.AIOConnector;
 import io.mycat.net.NIOAcceptor;
 import io.mycat.net.NIOConnector;
 import io.mycat.net.NIOProcessor;
@@ -80,7 +78,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -386,60 +383,26 @@ public class MycatServer {
 					businessExecutor);
 		}
 
-		// 系统没有提供参数取配置这个aio的值，默认aio＝false，也就是说默认于应用层的连接都是使用的NIO
-		if (aio) {
-			LOGGER.info("using aio network handler ");
-			asyncChannelGroups = new AsynchronousChannelGroup[processorCount];
-			// startup connector
-			connector = new AIOConnector();
-			for (int i = 0; i < processors.length; i++) {
-				asyncChannelGroups[i] = AsynchronousChannelGroup
-						.withFixedThreadPool(processorCount,
-								new ThreadFactory() {
-									private int inx = 1;
+		// 应用层的连接都是使用的NIO
+		LOGGER.info("using nio network handler ");
 
-									@Override
-									public Thread newThread(Runnable r) {
-										Thread th = new Thread(r);
-										// TODO
-										th.setName(DirectByteBufferPool.LOCAL_BUF_THREAD_PREX
-												+ "AIO" + (inx++));
-										LOGGER.info("created new AIO thread "
-												+ th.getName());
-										return th;
-									}
-								});
-			}
-			manager = new AIOAcceptor(NAME + "Manager", system.getBindIp(),
-					system.getManagerPort(), mf, this.asyncChannelGroups[0]);
+		NIOReactorPool reactorPool = new NIOReactorPool(
+				DirectByteBufferPool.LOCAL_BUF_THREAD_PREX + "NIOREACTOR",
+				processors.length);
+		connector = new NIOConnector(DirectByteBufferPool.LOCAL_BUF_THREAD_PREX
+				+ "NIOConnector", reactorPool);
+		((NIOConnector) connector).start();
 
-			// startup server
+		// ServerSocketChannel处理来自前端managerPort=9066的数据
+		manager = new NIOAcceptor(DirectByteBufferPool.LOCAL_BUF_THREAD_PREX
+				+ NAME + "Manager", system.getBindIp(),
+				system.getManagerPort(), mf, reactorPool);
 
-			server = new AIOAcceptor(NAME + "Server", system.getBindIp(),
-					system.getServerPort(), sf, this.asyncChannelGroups[0]);
+		// ServerSocketChannel处理来自前端serverPort=8066的数据
+		server = new NIOAcceptor(DirectByteBufferPool.LOCAL_BUF_THREAD_PREX
+				+ NAME + "Server", system.getBindIp(), system.getServerPort(),
+				sf, reactorPool);
 
-		} else {
-			LOGGER.info("using nio network handler ");
-
-			NIOReactorPool reactorPool = new NIOReactorPool(
-					DirectByteBufferPool.LOCAL_BUF_THREAD_PREX + "NIOREACTOR",
-					processors.length);
-			connector = new NIOConnector(
-					DirectByteBufferPool.LOCAL_BUF_THREAD_PREX + "NIOConnector",
-					reactorPool);
-			((NIOConnector) connector).start();
-
-			// ServerSocketChannel处理来自前端managerPort=9066的数据
-			manager = new NIOAcceptor(
-					DirectByteBufferPool.LOCAL_BUF_THREAD_PREX + NAME
-							+ "Manager", system.getBindIp(),
-					system.getManagerPort(), mf, reactorPool);
-
-			// ServerSocketChannel处理来自前端serverPort=8066的数据
-			server = new NIOAcceptor(DirectByteBufferPool.LOCAL_BUF_THREAD_PREX
-					+ NAME + "Server", system.getBindIp(),
-					system.getServerPort(), sf, reactorPool);
-		}
 		// manager start
 		manager.start();
 		LOGGER.info(manager.getName() + " is started and listening on "
