@@ -379,11 +379,6 @@ public abstract class AbstractConnection implements NIOConnection {
 		}
 	}
 
-	private boolean isConReadBuffer(ByteBuffer buffer) {
-		return buffer.capacity() == processor.getBufferPool()
-				.getConReadBuferChunk() && buffer.isDirect();
-	}
-
 	private ByteBuffer ensureFreeSpaceOfReadBuffer(ByteBuffer buffer,
 			int offset, final int pkgLength) {
 		// need a large buffer to hold the package
