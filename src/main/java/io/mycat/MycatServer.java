@@ -118,7 +118,7 @@ public class MycatServer {
 
 	// System Buffer Pool Instance
 	private BufferPool bufferPool;
-	private boolean aio = false;
+	// private boolean aio = false;
 
 	// XA事务全局ID生成
 	private final AtomicLong xaIDInc = new AtomicLong();
@@ -313,7 +313,7 @@ public class MycatServer {
 		ServerConnectionFactory sf = new ServerConnectionFactory();
 		SocketAcceptor manager = null;
 		SocketAcceptor server = null;
-		aio = (system.getUsingAIO() == 1);
+		// aio = (system.getUsingAIO() == 1);
 
 		// startup processors
 		int threadPoolSize = system.getProcessorExecutor();
@@ -325,41 +325,11 @@ public class MycatServer {
 		// minimum allocation unit
 		short bufferPoolChunkSize = system.getBufferPoolChunkSize();
 
-		// int socketBufferLocalPercent =
-		// system.getProcessorBufferLocalPercent();
-		// int bufferPoolType = system.getProcessorBufferPoolType();
-		//
-		// switch (bufferPoolType) {
-		// case 0:
 		bufferPool = new DirectByteBufferPool(bufferPoolPageSize,
 				bufferPoolChunkSize, bufferPoolPageNumber,
 				system.getFrontSocketSoRcvbuf());
 
 		totalNetWorkBufferSize = bufferPoolPageSize * bufferPoolPageNumber;
-		// break;
-		// case 1:
-		// /**
-		// * todo 对应权威指南修改：
-		// *
-		// * bytebufferarena由6个bytebufferlist组成，这六个list有减少内存碎片的机制
-		// * 每个bytebufferlist由多个bytebufferchunk组成，每个list也有减少内存碎片的机制
-		// * 每个bytebufferchunk由多个page组成，平衡二叉树管理内存使用状态，计算灵活
-		// *
-		// 设置的pagesize对应bytebufferarena里面的每个bytebufferlist的每个bytebufferchunk的buffer长度
-		// * bufferPoolChunkSize对应每个bytebufferchunk的每个page的长度
-		// * bufferPoolPageNumber对应每个bytebufferlist有多少个bytebufferchunk
-		// */
-		//
-		// totalNetWorkBufferSize = 6 * bufferPoolPageSize
-		// * bufferPoolPageNumber;
-		// break;
-		// default:
-		// bufferPool = new DirectByteBufferPool(bufferPoolPageSize,
-		// bufferPoolChunkSize, bufferPoolPageNumber,
-		// system.getFrontSocketSoRcvbuf());
-		// ;
-		// totalNetWorkBufferSize = bufferPoolPageSize * bufferPoolPageNumber;
-		// }
 
 		/**
 		 * Off Heap For Merge/Order/Group/Limit 初始化
@@ -481,25 +451,25 @@ public class MycatServer {
 		// 不使用zk，所这里点代码删除了
 	}
 
-	public void reloadDnIndex() {
-		if (MycatServer.getInstance().getProcessors() == null)
-			return;
-		// load datanode active index from properties
-		dnIndexProperties = loadDnIndexProps();
-		// init datahost
-		Map<String, PhysicalDBPool> dataHosts = config.getDataHosts();
-		LOGGER.info("reInitialize dataHost ...");
-		for (PhysicalDBPool node : dataHosts.values()) {
-			String index = dnIndexProperties.getProperty(node.getHostName(),
-					"0");
-			if (!"0".equals(index)) {
-				LOGGER.info("reinit datahost: " + node.getHostName()
-						+ "  to use datasource index:" + index);
-			}
-			node.switchSource(Integer.parseInt(index), true, "reload dnindex");
-
-		}
-	}
+	// public void reloadDnIndex() {
+	// if (MycatServer.getInstance().getProcessors() == null)
+	// return;
+	// // load datanode active index from properties
+	// dnIndexProperties = loadDnIndexProps();
+	// // init datahost
+	// Map<String, PhysicalDBPool> dataHosts = config.getDataHosts();
+	// LOGGER.info("reInitialize dataHost ...");
+	// for (PhysicalDBPool node : dataHosts.values()) {
+	// String index = dnIndexProperties.getProperty(node.getHostName(),
+	// "0");
+	// if (!"0".equals(index)) {
+	// LOGGER.info("reinit datahost: " + node.getHostName()
+	// + "  to use datasource index:" + index);
+	// }
+	// node.switchSource(Integer.parseInt(index), true, "reload dnindex");
+	//
+	// }
+	// }
 
 	// private Runnable catletClassClear() {
 	// return new Runnable() {
@@ -950,21 +920,21 @@ public class MycatServer {
 						.size()]);
 	}
 
-	public boolean isAIO() {
-		return aio;
-	}
+	// public boolean isAIO() {
+	// return aio;
+	// }
 
 	public ListeningExecutorService getListeningExecutorService() {
 		return listeningExecutorService;
 	}
 
-	public static void main(String[] args) throws Exception {
-		// String path = ZKUtils.getZKBasePath() + "bindata";
-		// CuratorFramework zk = ZKUtils.getConnection();
-		// if (zk.checkExists().forPath(path) == null)
-		// ;
-		//
-		// byte[] data = zk.getData().forPath(path);
-		// System.out.println(data.length);
-	}
+	// public static void main(String[] args) throws Exception {
+	// String path = ZKUtils.getZKBasePath() + "bindata";
+	// CuratorFramework zk = ZKUtils.getConnection();
+	// if (zk.checkExists().forPath(path) == null)
+	// ;
+	//
+	// byte[] data = zk.getData().forPath(path);
+	// System.out.println(data.length);
+	// }
 }

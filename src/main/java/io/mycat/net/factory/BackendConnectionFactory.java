@@ -35,17 +35,17 @@ import io.mycat.MycatServer;
  */
 public abstract class BackendConnectionFactory {
 
-	protected NetworkChannel openSocketChannel(boolean isAIO)
+	protected NetworkChannel openSocketChannel(/*boolean isAIO*/)
 			throws IOException {
-		if (isAIO) {
-			return AsynchronousSocketChannel
-                .open(MycatServer.getInstance().getNextAsyncChannelGroup());
-		} else {
+//		if (isAIO) {
+//			return AsynchronousSocketChannel
+//                .open(MycatServer.getInstance().getNextAsyncChannelGroup());
+//		} else {
 			SocketChannel channel = null;
 			channel = SocketChannel.open();
 			channel.configureBlocking(false);
 			return channel;
-		}
+		//}
 
 	}
 
