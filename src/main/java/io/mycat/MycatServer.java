@@ -117,6 +117,9 @@ public class MycatServer {
 	private volatile int nextProcessor;
 
 	// System Buffer Pool Instance
+	/**
+	 * 处理网络层数据
+	 */
 	private BufferPool bufferPool;
 	// private boolean aio = false;
 
