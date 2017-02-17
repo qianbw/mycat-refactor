@@ -137,7 +137,7 @@
 
         <function name="mod-long-orders" class="io.mycat.route.function.PartitionByMod">
                 <!-- how many data nodes -->
-                <property name="count">3</property>
+                <property name="count">2</property>
         </function>
 
         <function name="mod-long-customer" class="io.mycat.route.function.PartitionByMod">

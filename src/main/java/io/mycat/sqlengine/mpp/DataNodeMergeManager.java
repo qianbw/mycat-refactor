@@ -328,6 +328,7 @@ public class DataNodeMergeManager extends AbstractDataNodeMerge {
                     nulpack = true;
                     break;
                 }
+                
                 if (pack == END_FLAG_PACK) {
                     /**
                      * 最后一个节点datenode发送了row eof packet说明了整个
@@ -390,6 +391,7 @@ public class DataNodeMergeManager extends AbstractDataNodeMerge {
                     break;
                 }
 
+                // 如果不是“最后一个节点datenode发送了row eof packet”，则会将当前收到到数据pack生成unsafeRow并防到globalMergeResult中
                 unsafeRow = new UnsafeRow(fieldCount);
                 bufferHolder = new BufferHolder(unsafeRow,0);
                 unsafeRowWriter = new UnsafeRowWriter(bufferHolder,fieldCount);
